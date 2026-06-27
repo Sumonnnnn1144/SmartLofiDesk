@@ -3,3 +3,13 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+# Secrets / credentials
+src/secrets.h
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
