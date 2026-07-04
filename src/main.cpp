@@ -5,40 +5,13 @@
 #include "secrets.h"
 
 // ==========================================
-// 1. MODULE INPUT (PHẦN CỦA TRANG)
-// Đã được đóng gói vào thư mục lib/DHT_Sensor
+// 1. MODULES (ĐÃ ĐƯỢC BÓC TÁCH)
 // ==========================================
-#include <DHT_Sensor.h>
-
-// ==========================================
-// 2. MODULE OUTPUT (PHẦN CỦA KHANG)
-// Giữ nguyên toàn bộ logic điều khiển LED
-// ==========================================
-#define RED_PIN 25
-#define GREEN_PIN 26
-#define BLUE_PIN 27
-
-const char* topic_rgb = "smartroom/rgb";
-
-void setColor(String color) {
-  color.trim();
-
-  Serial.print("Set color command: ");
-  Serial.println(color);
-
-  digitalWrite(RED_PIN, color == "RED" ? HIGH : LOW);
-  digitalWrite(GREEN_PIN, color == "GREEN" ? HIGH : LOW);
-  digitalWrite(BLUE_PIN, color == "BLUE" ? HIGH : LOW);
-
-  if (color == "OFF") {
-    digitalWrite(RED_PIN, LOW);
-    digitalWrite(GREEN_PIN, LOW);
-    digitalWrite(BLUE_PIN, LOW);
-  }
-}
+#include <LED_Control.h>  // Phần Output của Khang
+#include <DHT_Sensor.h>   // Phần Input của Trang
 
 // ==========================================
-// 3. CẤU HÌNH MẠNG VÀ MQTT (CHUNG)
+// 2. CẤU HÌNH MẠNG VÀ MQTT CHUNG
 // ==========================================
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -48,9 +21,14 @@ const int mqtt_port = MQTT_PORT;
 const char* mqtt_user = MQTT_USER;
 const char* mqtt_pass = MQTT_PASSWORD;
 
+const char* topic_rgb = "smartroom/rgb";
+
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
+// ==========================================
+// 3. LOGIC KẾT NỐI & XỬ LÝ
+// ==========================================
 // Hàm lắng nghe lệnh từ Web (Của Khang)
 void callback(char* topic, byte* payload, unsigned int length) {
   String msg = "";
@@ -65,7 +43,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(msg);
 
   if (String(topic) == topic_rgb) {
-    setColor(msg);
+    setColor(msg); // Lệnh này giờ sẽ chạy an toàn qua module LED_Control
   }
 }
 
@@ -78,12 +56,10 @@ void connectWiFi() {
   WiFi.begin(ssid, password);
 
   int retry = 0;
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     retry++;
-
     if (retry > 40) {
       Serial.println();
       Serial.println("WiFi connection timeout. Restarting...");
@@ -132,14 +108,9 @@ void setup() {
   Serial.println("ESP32 SMARTROOM PROJECT STARTED");
   Serial.println("================================");
 
-  // --- Khởi tạo phần cứng của Khang ---
-  pinMode(RED_PIN, OUTPUT);
-  pinMode(GREEN_PIN, OUTPUT);
-  pinMode(BLUE_PIN, OUTPUT);
-  setColor("OFF");
-
-  // --- Khởi tạo phần cứng của Trang ---
-  initDHT(); 
+  // --- Khởi tạo các module phần cứng ---
+  initLED(); // Khang
+  initDHT(); // Trang 
 
   // --- Khởi tạo kết nối mạng ---
   connectWiFi();
@@ -153,8 +124,9 @@ void loop() {
     connectMQTT();
   }
   
-  client.loop(); // Lắng nghe luồng của Khang
+  // Duy trì kết nối MQTT và lắng nghe luồng Output của Khang
+  client.loop(); 
 
-  // --- Luồng xử lý dữ liệu của Trang ---
+  // Thực thi luồng Input đọc cảm biến của Trang
   handleDHTInput(client); 
 }
