@@ -4,13 +4,9 @@
 #include <PubSubClient.h>
 #include <DHT.h>
 #include "secrets.h"
-
+#include <LED_Control.h>
 #define DHTPIN 15
 #define DHTTYPE DHT11
-
-#define RED_PIN 25
-#define GREEN_PIN 26
-#define BLUE_PIN 27
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -30,22 +26,6 @@ DHT dht(DHTPIN, DHTTYPE);
 
 unsigned long lastSend = 0;
 
-void setColor(String color) {
-  color.trim();
-
-  Serial.print("Set color command: ");
-  Serial.println(color);
-
-  digitalWrite(RED_PIN, color == "RED" ? HIGH : LOW);
-  digitalWrite(GREEN_PIN, color == "GREEN" ? HIGH : LOW);
-  digitalWrite(BLUE_PIN, color == "BLUE" ? HIGH : LOW);
-
-  if (color == "OFF") {
-    digitalWrite(RED_PIN, LOW);
-    digitalWrite(GREEN_PIN, LOW);
-    digitalWrite(BLUE_PIN, LOW);
-  }
-}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String msg = "";
@@ -132,11 +112,7 @@ void setup() {
   Serial.println("ESP32 SMARTROOM PROJECT STARTED");
   Serial.println("================================");
 
-  pinMode(RED_PIN, OUTPUT);
-  pinMode(GREEN_PIN, OUTPUT);
-  pinMode(BLUE_PIN, OUTPUT);
-
-  setColor("OFF");
+  initLED();
 
   dht.begin();
   Serial.println("DHT11 initialized on GPIO15");
