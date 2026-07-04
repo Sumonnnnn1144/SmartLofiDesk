@@ -2,12 +2,17 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
-#include <DHT.h>
 #include "secrets.h"
-#include <LED_Control.h>
-#define DHTPIN 15
-#define DHTTYPE DHT11
 
+// ==========================================
+// 1. MODULES (ĐÃ ĐƯỢC BÓC TÁCH)
+// ==========================================
+#include <LED_Control.h>  // Phần Output của Khang
+#include <DHT_Sensor.h>   // Phần Input của Trang
+
+// ==========================================
+// 2. CẤU HÌNH MẠNG VÀ MQTT CHUNG
+// ==========================================
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
@@ -16,17 +21,15 @@ const int mqtt_port = MQTT_PORT;
 const char* mqtt_user = MQTT_USER;
 const char* mqtt_pass = MQTT_PASSWORD;
 
-const char* topic_temp = "smartroom/temperature";
-const char* topic_humi = "smartroom/humidity";
 const char* topic_rgb = "smartroom/rgb";
 
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
-DHT dht(DHTPIN, DHTTYPE);
 
-unsigned long lastSend = 0;
-
-
+// ==========================================
+// 3. LOGIC KẾT NỐI & XỬ LÝ
+// ==========================================
+// Hàm lắng nghe lệnh từ Web (Của Khang)
 void callback(char* topic, byte* payload, unsigned int length) {
   String msg = "";
 
@@ -40,7 +43,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(msg);
 
   if (String(topic) == topic_rgb) {
-    setColor(msg);
+    setColor(msg); // Lệnh này giờ sẽ chạy an toàn qua module LED_Control
   }
 }
 
@@ -53,12 +56,10 @@ void connectWiFi() {
   WiFi.begin(ssid, password);
 
   int retry = 0;
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     retry++;
-
     if (retry > 40) {
       Serial.println();
       Serial.println("WiFi connection timeout. Restarting...");
@@ -78,20 +79,15 @@ void connectMQTT() {
     Serial.println("===== MQTT CONNECTING =====");
     Serial.print("Broker: ");
     Serial.println(mqtt_server);
-    Serial.print("Port: ");
-    Serial.println(mqtt_port);
 
     String clientId = "ESP32-Real-";
     clientId += String(random(0xffff), HEX);
 
-    Serial.print("Client ID: ");
-    Serial.println(clientId);
-
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
       Serial.println("MQTT connected!");
 
+      // Khang đăng ký nhận lệnh điều khiển LED
       client.subscribe(topic_rgb);
-
       Serial.print("Subscribed to topic: ");
       Serial.println(topic_rgb);
     } else {
@@ -112,47 +108,25 @@ void setup() {
   Serial.println("ESP32 SMARTROOM PROJECT STARTED");
   Serial.println("================================");
 
-  initLED();
+  // --- Khởi tạo các module phần cứng ---
+  initLED(); // Khang
+  initDHT(); // Trang 
 
-  dht.begin();
-  Serial.println("DHT11 initialized on GPIO15");
-
+  // --- Khởi tạo kết nối mạng ---
   connectWiFi();
-
   espClient.setInsecure();
-
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
-
-  Serial.println("Setup completed.");
 }
 
 void loop() {
   if (!client.connected()) {
     connectMQTT();
   }
+  
+  // Duy trì kết nối MQTT và lắng nghe luồng Output của Khang
+  client.loop(); 
 
-  client.loop();
-
-  if (millis() - lastSend >= 5000) {
-    lastSend = millis();
-
-    float temp = dht.readTemperature();
-    float humi = dht.readHumidity();
-
-    if (!isnan(temp) && !isnan(humi)) {
-      Serial.print("Temperature: ");
-      Serial.println(temp);
-
-      Serial.print("Humidity: ");
-      Serial.println(humi);
-
-      client.publish(topic_temp, String(temp).c_str());
-      client.publish(topic_humi, String(humi).c_str());
-
-      Serial.println("Published temperature and humidity to HiveMQ.");
-    } else {
-      Serial.println("Failed to read from DHT11.");
-    }
-  }
+  // Thực thi luồng Input đọc cảm biến của Trang
+  handleDHTInput(client); 
 }
