@@ -3,16 +3,11 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include "secrets.h"
+#include <WiFiManager.h>
 
-// ==========================================
-// 1. MODULES (ĐÃ ĐƯỢC BÓC TÁCH)
-// ==========================================
 #include <LED_Control.h>  // Phần Output của Khang
 #include <DHT_Sensor.h>   // Phần Input của Trang
 
-// ==========================================
-// 2. CẤU HÌNH MẠNG VÀ MQTT CHUNG
-// ==========================================
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
@@ -26,10 +21,7 @@ const char* topic_rgb = "smartroom/rgb";
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-// ==========================================
-// 3. LOGIC KẾT NỐI & XỬ LÝ
-// ==========================================
-// Hàm lắng nghe lệnh từ Web (Của Khang)
+
 void callback(char* topic, byte* payload, unsigned int length) {
   String msg = "";
 
@@ -43,28 +35,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(msg);
 
   if (String(topic) == topic_rgb) {
-    setColor(msg); // Lệnh này giờ sẽ chạy an toàn qua module LED_Control
+    setColor(msg); 
   }
 }
 
 void connectWiFi() {
   Serial.println();
   Serial.println("===== WIFI CONNECTING =====");
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  int retry = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    retry++;
-    if (retry > 40) {
-      Serial.println();
-      Serial.println("WiFi connection timeout. Restarting...");
-      ESP.restart();
-    }
+  WiFiManager wm;
+  if(!wm.autoConnect("SmartRoom_Config")){
+    Serial.println("Error connection, restarting...");
+    ESP.restart();
   }
 
   Serial.println();
