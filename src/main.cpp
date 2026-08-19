@@ -79,7 +79,6 @@ void connectMQTT() {
 }
 
 void setup() {
-  connectWiFi();
   Serial.begin(115200);
   delay(1000);
 
@@ -92,6 +91,7 @@ void setup() {
   initLED(); // Khang
   initDHT(); // Trang 
   
+  connectWiFi();
   espClient.setInsecure();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
