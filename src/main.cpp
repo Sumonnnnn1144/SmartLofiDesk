@@ -8,9 +8,6 @@
 #include <LED_Control.h>  // Phần Output của Khang
 #include <DHT_Sensor.h>   // Phần Input của Trang
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
-
 const char* mqtt_server = MQTT_SERVER;
 const int mqtt_port = MQTT_PORT;
 const char* mqtt_user = MQTT_USER;
@@ -56,6 +53,7 @@ void connectWiFi() {
 
 void connectMQTT() {
   while (!client.connected()) {
+    if (WiFi.status() != WL_CONNECTED) { break; }
     Serial.println();
     Serial.println("===== MQTT CONNECTING =====");
     Serial.print("Broker: ");
@@ -81,6 +79,7 @@ void connectMQTT() {
 }
 
 void setup() {
+  connectWiFi();
   Serial.begin(115200);
   delay(1000);
 
@@ -92,15 +91,19 @@ void setup() {
   // --- Khởi tạo các module phần cứng ---
   initLED(); // Khang
   initDHT(); // Trang 
-
-  // --- Khởi tạo kết nối mạng ---
-  connectWiFi();
+  
   espClient.setInsecure();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 }
 
 void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Mất kết nối WiFi! Đang thử kết nối lại...");
+    WiFi.reconnect(); 
+    delay(5000);      
+    return;           
+  }
   if (!client.connected()) {
     connectMQTT();
   }
