@@ -31,7 +31,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("]: ");
   Serial.println(msg);
 
-  if (String(topic) == topic_rgb) {
+  if (strcmp(topic, topic_rgb) == 0) {
     setColor(msg); 
   }
 }

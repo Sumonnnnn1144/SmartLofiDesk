@@ -1,0 +1,16 @@
+Test YC4, 5:
+cd /home/ubuntu/sensor-data
+tail -f sensor_log.csv  
+
+Test YC9
+cd ~/.node-red
+
+npm ls --depth=0                       # liệt kê module đã cài trong thư mục Node-RED
+npm ls @aws-sdk/client-dynamodb        # kiểm tra một module cụ thể
+npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb bcryptjs
+cat package.json                       # xem danh sách phụ thuộc đã khai
+
+
+Test prediction:
+cd /home/ubuntu
+cat predict.py
